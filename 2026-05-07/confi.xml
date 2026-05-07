@@ -1,0 +1,60 @@
+<Sysmon schemaversion="4.83">
+  <!-- Configuración Global -->
+  <HashAlgorithms>SHA256,MD5</HashAlgorithms> <!-- Algoritmos para firmas de archivos -->
+  <CheckRevocation/> <!-- Verifica revocación de certificados -->
+
+  <EventFiltering>
+    <!-- 1: Creación de Procesos (Log de todo por defecto) -->
+    <RuleGroup name="Procesos" groupRelation="or">
+      <ProcessCreate onmatch="exclude">
+        <!-- Excluir procesos ruidosos conocidos de Microsoft -->
+        <Image condition="end with">lsass.exe</Image>
+        <Image condition="end with">svchost.exe</Image>
+      </ProcessCreate>
+    </RuleGroup>
+
+    <!-- 3: Conexiones de Red -->
+    <RuleGroup name="Red" groupRelation="or">
+      <NetworkConnect onmatch="include">
+        <!-- Monitorizar conexiones sospechosas de navegadores o PowerShell -->
+        <Image condition="end with">powershell.exe</Image>
+        <Image condition="end with">cmd.exe</Image>
+        <DestinationPort condition="is">443</DestinationPort>
+      </NetworkConnect>
+    </RuleGroup>
+
+    <!-- 11: Creación de Archivos (Foco en ejecutables) -->
+    <RuleGroup name="Archivos" groupRelation="or">
+      <FileCreate onmatch="include">
+        <TargetFilename condition="end with">.exe</TargetFilename>
+        <TargetFilename condition="end with">.ps1</TargetFilename>
+        <TargetFilename condition="end with">.bat</TargetFilename>
+      </FileCreate>
+    </RuleGroup>
+
+    <!-- 12, 13, 14: Eventos de Registro -->
+    <RuleGroup name="Registro" groupRelation="or">
+      <RegistryEvent onmatch="include">
+        <!-- Monitorizar persistencia (Run keys) -->
+        <TargetObject condition="contains">Windows\CurrentVersion\Run</TargetObject>
+      </RegistryEvent>
+    </RuleGroup>
+    <!-- 1: Creación de Procesos (Foco en procesos de autenticación) -->
+    <RuleGroup name="Logon_Processes" groupRelation="or">
+      <ProcessCreate onmatch="include">
+        <Image condition="end with">winlogon.exe</Image>
+        <Image condition="end with">logonui.exe</Image>
+        <Image condition="end with">userinit.exe</Image>
+      </ProcessCreate>
+    </RuleGroup>
+
+    <!-- 25: Process Tampering (Útil para detectar procesos de logon sospechosos) -->
+    <RuleGroup name="Logon_Tampering" groupRelation="or">
+      <ProcessTampering onmatch="include">
+        <Type condition="is">Image is replaced</Type>
+      </ProcessTampering>
+    </RuleGroup>
+
+  </EventFiltering>
+</Sysmon>
+
